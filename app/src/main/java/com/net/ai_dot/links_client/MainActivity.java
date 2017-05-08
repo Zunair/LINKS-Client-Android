@@ -62,6 +62,7 @@ import java.net.URLEncoder;
 import java.sql.Date;
 import java.sql.Time;
 import java.util.Calendar;
+import java.util.concurrent.ExecutionException;
 
 import android.util.Base64;
 
@@ -83,8 +84,12 @@ public class MainActivity extends AppCompatActivity {
     private static String port = "";
     private static String key = "";
     private static String command = "";
+    private static String micName = "";
 
-    private Button mPTT = null;
+    public static Calendar cDue = null;
+
+    public Button mPTT = null;
+    public static boolean Recording = false;
 
     private Button mRecordButton = null;
     private MediaRecorder mRecorder = null;
@@ -109,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setCommand(command);
         settings.setPort(port);
         settings.setIP(ip);
+        settings.setMicName(micName);
 
         //settings.save();
     }
@@ -120,12 +126,13 @@ public class MainActivity extends AppCompatActivity {
         command = settings.getCommand();
         port = settings.getPort();
         ip = settings.getIP();
+        micName = settings.getMicName();
 
         ((TextView) findViewById(R.id.editTextIP)).setText(ip);
         ((TextView) findViewById(R.id.editTextKey)).setText(key);
         ((TextView) findViewById(R.id.editTextCommand)).setText(command);
         ((TextView) findViewById(R.id.editTextPort)).setText(port);
-
+        ((TextView) findViewById(R.id.editTextMicName)).setText(micName);
     }
 
     @Override
@@ -225,6 +232,7 @@ public class MainActivity extends AppCompatActivity {
         String lastIP = ip, lastPort = port;
         ip = ((TextView) findViewById(R.id.editTextIP)).getText().toString();
         port = ((TextView) findViewById(R.id.editTextPort)).getText().toString();
+        command = ((TextView) findViewById(R.id.editTextCommand)).getText().toString();
 
         try {
             if (isNetworkAvailable()) {
@@ -268,35 +276,30 @@ public class MainActivity extends AppCompatActivity {
 
     public void ButtonPost2_OnClick(View v)
     {
-        SendSoundData();
+        SendSoundData(true);
     }
 
-    private void SendSoundData()
-    {
+    private void SendSoundData(boolean... click) {
         LongOperation lo = new LongOperation();
 
         TextView tv = ((TextView) findViewById(R.id.editTextCommand));
-        tv.setText("[RecognizeBase64AMR(\"SoundByte\",\"Default\")]");
+        //tv.setText("[RecognizeBase64AMR(\"SoundByte\",\"Default\")]");
 
         ip = ((TextView) findViewById(R.id.editTextIP)).getText().toString();
         port = ((TextView) findViewById(R.id.editTextPort)).getText().toString();
+        command = "[RecognizeBase64AMR(\"SoundByte\",\"" + micName + "\")]";
 
-        byte soundBytes[] = new byte[0];
-        try {
-            File f = new File(mFileName);
-            if (f.exists()) {
-                soundBytes = FileUtils.readFileToByteArray(f);
-                soundString = Base64.encodeToString(soundBytes, Base64.DEFAULT);
-                FileUtils.forceDelete(new File(mFileName));
-                lo.execute("http://" + ip + ":" + port);
+        if (click.length > 0) {
+            if (click[0] = true) {
+                File f = new File(mFileName);
+                if (!f.exists()) {
+                    Toast.makeText(getApplicationContext(), "Please record a command first.", Toast.LENGTH_LONG).show();
+                    return;
+                }
             }
-            else
-            {
-                Toast.makeText(getApplicationContext(), "Press and hold PTT button while speaking.", Toast.LENGTH_LONG).show();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        lo.execute("http://" + ip + ":" + port);
+
     }
 
     @Override
@@ -325,11 +328,20 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void onRecord(boolean start) {
-        if (start) {
-            startRecording();
-        } else {
-            stopRecording();
+    public void onRecord(boolean start) {
+        try {
+            if (start) {
+                Recording = true;
+                startRecording();
+            } else {
+                stopRecording();
+                Recording = false;
+            }
+        }
+        catch (Exception error)
+        {
+            Recording = false;
+            Toast.makeText(getApplicationContext(), "onRecord: " + error.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -350,14 +362,15 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
                     mp.release();
+                    //onPlay(false);
+                    //mPlayButton.setText("Start Playing");
                 }
             };
 
             mPlayer.setDataSource(mFileName);
             mPlayer.prepare();
-            mPlayer.start();
             mPlayer.setOnCompletionListener(playCompleted);
-
+            mPlayer.start();
 
         } catch (IOException e) {
             Log.e(LOG_TAG, "prepare() failed");
@@ -365,12 +378,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopPlaying() {
-        mPlayer.release();
+        //mPlayer.release();
         mPlayer = null;
     }
 
     private void startRecording() {
         //record();
+        File f = new File(mFileName);
+        if (f.exists()) {
+            FileUtils.deleteQuietly(new File(mFileName));
+        }
+
+        if (f.exists()) {
+            try {
+                FileUtils.forceDelete(new File(mFileName));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         mRecorder = new MediaRecorder();
         //mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         //mRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
@@ -384,18 +410,27 @@ public class MainActivity extends AppCompatActivity {
             mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
             mRecorder.setPreviewDisplay(null);
             mRecorder.prepare();
+            mRecorder.start();
         } catch (IOException e) {
             Log.e(LOG_TAG, "prepare() failed");
         }
+        catch (Exception error)
+        {
+            Toast.makeText(getApplicationContext(), "startRecording: " + error.getMessage(), Toast.LENGTH_LONG).show();
+        }
 
-        mRecorder.start();
     }
 
     private void stopRecording() {
         //isRecording = false;
-        mRecorder.stop();
-        mRecorder.release();
-        mRecorder = null;
+        try {
+            mRecorder.stop();
+            mRecorder.release();
+            mRecorder = null;
+        }
+        catch (Exception error) {
+            Toast.makeText(getApplicationContext(), "Please record at least for a second.", Toast.LENGTH_LONG).show();
+        }
     }
 
     class PTT extends android.support.v7.widget.AppCompatButton {
@@ -403,38 +438,32 @@ public class MainActivity extends AppCompatActivity {
 
         int startSeconds;
 
-        Calendar cDue;
-
         OnTouchListener touch = new OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
 
-                switch ( event.getAction() )
-                {
-                    case MotionEvent.ACTION_DOWN:
-                        cDue = Calendar.getInstance();
-                        cDue.add (Calendar.SECOND, 1);
+                try {
 
-                        setText("Recording");
-                        onRecord(mStartRecording);
-                        break;
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            cDue = Calendar.getInstance();
+                            cDue.add(Calendar.SECOND, 1);
+                            setText("Recording");
+                            onRecord(true);
+                            break;
 
-                    case MotionEvent.ACTION_UP:
-                        while (cDue.getTimeInMillis() > Calendar.getInstance().getTimeInMillis())
-                        {
-                            try {
-                                Thread.sleep(100);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        setText("PTT");
-                        onRecord(mStartRecording);
-                        //startPlaying();
-                        SendSoundData();
-                        break;
+                        case MotionEvent.ACTION_UP:
+                            //startPlaying();
+                            SendSoundData();
+                            setText("PTT");
+                            break;
+                    }
+                    mStartRecording = !mStartRecording;
                 }
-                mStartRecording = !mStartRecording;
+                catch (Exception error)
+                {
+                    Toast.makeText(getApplicationContext(), "Touch: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                }
                 return false;
             }
         };
@@ -490,6 +519,46 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public static void PlayBase64Mp4(String soundString)
+    {
+        //decode base64 string
+        byte[] soundBytes = Base64.decode(soundString, Base64.DEFAULT);
+        String mp4 = "";
+        try {
+            mp4 = mFileName + ".mp4";
+            File f = new File(mp4);
+            if (f.exists()) f.delete();
+            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(mp4));
+            bos.write(soundBytes);
+            bos.flush();
+            bos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File f = new File(mp4);
+        if (f.exists())
+        {
+            MediaPlayer mPlayer = new MediaPlayer();
+            try {
+                MediaPlayer.OnCompletionListener playCompleted = new MediaPlayer.OnCompletionListener() {
+                    @Override
+                    public void onCompletion(MediaPlayer mp) {
+                    mp.release();
+                    }
+                };
+
+                mPlayer.setDataSource(mp4);
+                mPlayer.prepare();
+                mPlayer.setOnCompletionListener(playCompleted);
+                mPlayer.start();
+
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "prepare() failed");
+            }
+        }
+    }
+
     private class LongOperation extends AsyncTask<String, Void, Void> {
 
         // Required initialization
@@ -517,9 +586,8 @@ public class MainActivity extends AppCompatActivity {
                 //data +="&" + URLEncoder.encode("username", "UTF-8") + "="+edittext.getText();
 
                 key = ((TextView) findViewById(R.id.editTextKey)).getText().toString();
-                command = ((TextView) findViewById(R.id.editTextCommand)).getText().toString().replace("SoundByte", soundString);
 
-                data += "&" + URLEncoder.encode("key=" + key + "&output=error&action=" + command, "UTF-8");
+                data += "&" + URLEncoder.encode("key=" + key + "&action=" + command, "UTF-8");
 
             } catch (UnsupportedEncodingException e) {
                 // TODO Auto-generated catch block
@@ -534,9 +602,68 @@ public class MainActivity extends AppCompatActivity {
             /************ Make Post Call To Web Server ***********/
             BufferedReader reader = null;
 
+            try {
+
+                if (Recording) {
+                    int counter = 15;
+                    while (cDue == null && counter != 0) {
+                        try {
+                            Thread.sleep(100);
+                            counter--;
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if (cDue != null) {
+
+                        while (cDue.getTimeInMillis() > Calendar.getInstance().getTimeInMillis()) {
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        onRecord(false);
+                    }
+                }
+
+            }
+            catch (Exception error)
+            {
+                Error = error.getMessage();
+                return null;
+            }
+
+            byte soundBytes[] = new byte[0];
+            try {
+                File f = new File(mFileName);
+                if (f.exists()) {
+                    soundBytes = FileUtils.readFileToByteArray(f);
+                    soundString = Base64.encodeToString(soundBytes, Base64.DEFAULT);
+                    FileUtils.deleteQuietly(new File(mFileName));
+
+                    if (soundString == "") {
+                        //Toast.makeText(getApplicationContext(), "SoundByte not found.", Toast.LENGTH_LONG).show();
+                        Error = "SoundByte not found.";
+                        return null;
+                    }
+                    else{
+                        data = data.replace("SoundByte", soundString);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                Error = e.getMessage();
+            }
+
             // Send data
             HttpURLConnection conn = null;
+
             try {
+
+                conn = null;
 
                 // Defined URL  where to send data
                 URL url = new URL(urls[0]);
@@ -544,16 +671,18 @@ public class MainActivity extends AppCompatActivity {
 
                 // Send POST data request
 
-                conn = (HttpURLConnection)url.openConnection();
-                try {
-                    conn.getPermission();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                conn = (HttpURLConnection) url.openConnection();
+                //try {
+                //    conn.getPermission();
+                //} catch (Exception e) {
+                //    e.printStackTrace();
+                //}
                 //url.getPort();
-                conn.setConnectTimeout(15000);//define connection timeout
-                conn.setReadTimeout(15000);//define read timeout
+                conn.setConnectTimeout(4000);//define connection timeout
+                conn.setReadTimeout(4000);//define read timeout
+                //conn.connect();
                 conn.setDoOutput(true);
+
                 OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
                 wr.write(data);
                 wr.flush();
@@ -573,7 +702,7 @@ public class MainActivity extends AppCompatActivity {
 
                     // Append Server Response To Content String
                     Content = sb.toString();
-                }else{
+                } else {
                     Error = conn.getResponseMessage();
                     Content = null;
                 }
@@ -582,6 +711,7 @@ public class MainActivity extends AppCompatActivity {
 
             } catch (Exception ex) {
                 Error = ex.getMessage();
+
             } finally {
                 try {
                     if (conn != null)
@@ -589,6 +719,7 @@ public class MainActivity extends AppCompatActivity {
                     if (reader != null)
                         reader.close();
                 } catch (Exception ex) {
+                    Error = ex.getMessage();
                 }
             }
 
@@ -613,10 +744,28 @@ public class MainActivity extends AppCompatActivity {
 
                         JSONObject jsonRootObject = new JSONObject(Content);
 
-                        //JSONObject json2 = jsonRootObject.getJSONObject("jsonkey");//pass jsonkey here
-
-                        //String audioAsBase64 = json2.optString("response").toString();//parse json to string through parameters
-
+                        String sResponse = jsonRootObject.get("response").toString().trim();
+                        String sError = jsonRootObject.get("error").toString().trim();
+                        if (sError.length() > 0)
+                        {
+                            ((TextView)findViewById(R.id.StatusTextView)).setText("Error: " + sError);
+                        }
+                        else {
+                            if (sResponse.length() > 0) {
+                                String[] response = sResponse.split("\\|\\|\\|LINKS\\|\\|\\|");
+                                if (response.length > 1)
+                                {
+                                    String sPhraseAsString = response[1];
+                                    String sPhraseAudioAsBase64 = response[2];
+                                    PlayBase64Mp4(sPhraseAudioAsBase64);
+                                    ((TextView)findViewById(R.id.StatusTextView)).setText("Response: " + sPhraseAsString);
+                                }
+                                else
+                                {
+                                    ((TextView)findViewById(R.id.StatusTextView)).setText("Response: " + response[0]);
+                                }
+                            }
+                        }
 
                         //the result is stored in string id. you can display it now
                     }

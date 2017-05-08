@@ -10,6 +10,15 @@
     android:weightSum="1">
 
     <EditText
+        android:id="@+id/editTextMicName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="Name"
+        tools:text="Phone 01" />
+
+    <EditText
         android:id="@+id/editTextIP"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

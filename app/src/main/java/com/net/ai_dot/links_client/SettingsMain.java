@@ -19,6 +19,7 @@ public class SettingsMain {
     public static final String KEY_LKEY = "LKEY";
     public static final String KEY_COMMAND = "COMMAND";
     public static final String KEY_PORT = "PORT";
+    public static final String KEY_MICNAME = "MICNAME";
 
     public SettingsMain(Context context) {
         this.context = context;
@@ -74,5 +75,14 @@ public class SettingsMain {
 
     public String getPort() {
         return preferences.getString(KEY_PORT, "54657");
+    }
+
+    public void setMicName(String port) {
+        editor.putString(KEY_MICNAME, port);
+        save();
+    }
+
+    public String getMicName() {
+        return preferences.getString(KEY_MICNAME, "Phone 01");
     }
 }
