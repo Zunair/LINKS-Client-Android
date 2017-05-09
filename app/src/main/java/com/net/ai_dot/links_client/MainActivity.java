@@ -405,6 +405,7 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
+            //mRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
             mRecorder.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
             mRecorder.setOutputFile(mFileName);
             mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
