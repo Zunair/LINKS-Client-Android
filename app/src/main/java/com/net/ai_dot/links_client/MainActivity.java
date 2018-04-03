@@ -404,11 +404,20 @@ public class MainActivity extends AppCompatActivity {
         //mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
         try {
-            mRecorder.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
+            mRecorder.setAudioChannels(2);
+            mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             //mRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
             mRecorder.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
             mRecorder.setOutputFile(mFileName);
             mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+
+            //Works also
+//            mRecorder.setAudioChannels(2);
+//            mRecorder.setAudioSource(MediaRecorder.AudioSource.UNPROCESSED);
+//            mRecorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
+//            mRecorder.setOutputFile(mFileName);
+//            mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+
             mRecorder.setPreviewDisplay(null);
             mRecorder.prepare();
             mRecorder.start();
