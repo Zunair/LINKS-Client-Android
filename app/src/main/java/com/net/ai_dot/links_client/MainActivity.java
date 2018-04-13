@@ -1,6 +1,8 @@
 package com.net.ai_dot.links_client;
 
+import android.app.Activity;
 import android.app.AlertDialog;
+//import android.app.MediaRouteButton;
 import android.app.ProgressDialog;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -9,27 +11,34 @@ import android.media.AudioTrack;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.os.Build;
+//import android.os.Build;
 import android.os.Bundle;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
-import android.os.Bundle;
+//import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
-import android.support.constraint.ConstraintLayout;
+//import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.SwitchCompat;
+//import android.support.v7.widget.ActionMenuView;
+//import android.support.v7.widget.SwitchCompat;
+import android.text.InputType;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.Surface;
+//import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CompoundButton;
+//import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,23 +60,23 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
+//import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
+//import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.sql.Date;
-import java.sql.Time;
+//import java.sql.Date;
+//import java.sql.Time;
 import java.util.Calendar;
-import java.util.concurrent.ExecutionException;
+//import java.util.concurrent.ExecutionException;
 
 import android.util.Base64;
 
-import static android.media.AudioFormat.CHANNEL_IN_MONO;
-import static android.media.AudioFormat.ENCODING_PCM_16BIT;
+//import static android.media.AudioFormat.CHANNEL_IN_MONO;
+//import static android.media.AudioFormat.ENCODING_PCM_16BIT;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -85,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
     private static String key = "";
     private static String command = "";
     private static String micName = "";
+    private static boolean speechEnabled = true;
 
     public static Calendar cDue = null;
 
@@ -103,7 +113,6 @@ public class MainActivity extends AppCompatActivity {
     // Requesting permission to RECORD_AUDIO
     private boolean permissionToRecordAccepted = false;
     private String[] permissions = {Manifest.permission.RECORD_AUDIO};
-
     private SettingsMain settings;
     //private SwitchCompat switchVibrate;
 
@@ -115,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setPort(port);
         settings.setIP(ip);
         settings.setMicName(micName);
+        settings.setEnableSpeech(speechEnabled);
 
         //settings.save();
     }
@@ -127,13 +137,16 @@ public class MainActivity extends AppCompatActivity {
         port = settings.getPort();
         ip = settings.getIP();
         micName = settings.getMicName();
+        speechEnabled = settings.getEnableSpeech();
 
         ((TextView) findViewById(R.id.editTextIP)).setText(ip);
         ((TextView) findViewById(R.id.editTextKey)).setText(key);
         ((TextView) findViewById(R.id.editTextCommand)).setText(command);
         ((TextView) findViewById(R.id.editTextPort)).setText(port);
         ((TextView) findViewById(R.id.editTextMicName)).setText(micName);
+        ((Switch) findViewById(R.id.switchEnableSpeech)).setChecked(speechEnabled);
     }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -144,43 +157,69 @@ public class MainActivity extends AppCompatActivity {
 
         //mFileName = getExternalFilesDir();
         mFileName = getCacheDir().getAbsolutePath();
-        mFileName += "/audiorecordtest.3gp";
+        mFileName += "/audio_record_test.3gp";
 
         //if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
         //}
 
         LinearLayout ll = new LinearLayout(this);
-        mRecordButton = new RecordButton(this);
+        ll.setVerticalScrollBarEnabled(true);
+
+        //mRecordButton = new RecordButton(this);
         mPTT = new PTT(this);
 
-        ll.addView(mRecordButton,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                       0));
-        mPlayButton = new PlayButton(this);
+//        ll.addView(mRecordButton,
+//                new LinearLayout.LayoutParams(
+//                        ViewGroup.LayoutParams.WRAP_CONTENT,
+//                        ViewGroup.LayoutParams.WRAP_CONTENT,
+//                       0));
+//        mPlayButton = new PlayButton(this);
+//
+//        ll.addView(mPlayButton,
+//               new LinearLayout.LayoutParams(
+//                        ViewGroup.LayoutParams.WRAP_CONTENT,
+//                        ViewGroup.LayoutParams.WRAP_CONTENT,
+//                        0));
 
-        ll.addView(mPlayButton,
-               new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        0));
+        ViewGroup.LayoutParams params = findViewById(R.id.editTextCommand).getLayoutParams();
+        //params.height = 200;
+        mPTT.setLayoutParams(params);
+        //mPTT.setBackground( );
+        mPTT.setHeight(300);
+//        mPTT.setMinimumHeight(32);
+//        mPTT.setMinimumWidth(32);
+//        mPTT.setMaxHeight(256);
+//        mPTT.setMaxWidth(256);
 
-        ll.addView(mPTT,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        0));
+        ImageView passEye = (ImageView) findViewById(R.id.buttonEye);
+
+        passEye.setOnTouchListener(new View.OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                EditText editText = (EditText) findViewById(R.id.editTextKey);
+
+                switch ( event.getAction() ) {
+                    case MotionEvent.ACTION_DOWN:
+                        editText.setInputType(InputType.TYPE_CLASS_TEXT);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        break;
+                }
+                return true;
+            }
+        });
+
+        //ll.addView(mPTT);
         //setContentView(ll);
 
         LinearLayout cl =  (LinearLayout)findViewById(R.id.MainLayout);
+        cl.addView(mPTT);
 
-
-        cl.addView(ll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0));
+//        cl.addView(ll, new LinearLayout.LayoutParams(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                0));
         //cl.addView(mRecordButton,
         //        new LinearLayout.LayoutParams(
         //                ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -205,8 +244,14 @@ public class MainActivity extends AppCompatActivity {
         //Bitmap decodedImage = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         //image.setImageBitmap(decodedImage);
         //checkConnection();
+
+
         getSettings();
+
+
+
     }
+
 
     public void checkConnection()
     {
@@ -233,6 +278,8 @@ public class MainActivity extends AppCompatActivity {
         ip = ((TextView) findViewById(R.id.editTextIP)).getText().toString();
         port = ((TextView) findViewById(R.id.editTextPort)).getText().toString();
         command = ((TextView) findViewById(R.id.editTextCommand)).getText().toString();
+        micName = ((TextView) findViewById(R.id.editTextMicName)).getText().toString();
+        speechEnabled = ((Switch) findViewById(R.id.switchEnableSpeech)).isChecked();
 
         try {
             if (isNetworkAvailable()) {
@@ -285,9 +332,10 @@ public class MainActivity extends AppCompatActivity {
         TextView tv = ((TextView) findViewById(R.id.editTextCommand));
         //tv.setText("[RecognizeBase64AMR(\"SoundByte\",\"Default\")]");
 
+        String getSpeechResponse = speechEnabled ? "TRUE" : "FALSE";
         ip = ((TextView) findViewById(R.id.editTextIP)).getText().toString();
         port = ((TextView) findViewById(R.id.editTextPort)).getText().toString();
-        command = "[RecognizeBase64AMR(\"SoundByte\",\"" + micName + "\")]";
+        command = "[RecognizeBase64AMR(\"SoundByte\",\"" + micName + "\",\"" + getSpeechResponse + "\")]";
 
         if (click.length > 0) {
             if (click[0] = true) {
@@ -426,9 +474,25 @@ public class MainActivity extends AppCompatActivity {
         }
         catch (Exception error)
         {
-            Toast.makeText(getApplicationContext(), "startRecording: " + error.getMessage(), Toast.LENGTH_LONG).show();
+            //Toast.makeText(getApplicationContext(), "startRecording: " + error.getMessage(), Toast.LENGTH_LONG).show();
+            handleToast("startRecording: " + error.getMessage());
         }
 
+    }
+
+    private void handleToast(final String msg)
+    {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(
+                new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
     }
 
     private void stopRecording() {
@@ -437,11 +501,19 @@ public class MainActivity extends AppCompatActivity {
             mRecorder.stop();
             mRecorder.release();
             mRecorder = null;
-        }
-        catch (Exception error) {
-            Toast.makeText(getApplicationContext(), "Please record at least for a second.", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+
+            handleToast("Please record at least for a second.");
+            //Toast.makeText(getApplicationContext(), "Please record at least for a second.", Toast.LENGTH_LONG).show();
         }
     }
+
+    public void EnableSpeech_OnClick(View view) {
+
+        speechEnabled = ((Switch) findViewById(R.id.switchEnableSpeech)).isChecked();
+        settings.setEnableSpeech(speechEnabled);
+    }
+
 
     class PTT extends android.support.v7.widget.AppCompatButton {
         boolean mStartRecording = true;
@@ -459,19 +531,21 @@ public class MainActivity extends AppCompatActivity {
                             cDue = Calendar.getInstance();
                             cDue.add(Calendar.SECOND, 1);
                             setText("Recording");
+                            //setImageDrawable(getResources().getDrawable(R.drawable.view_512));
+                            //setImageAlpha(100);
                             onRecord(true);
                             break;
 
                         case MotionEvent.ACTION_UP:
                             //startPlaying();
                             SendSoundData();
-                            setText("PTT");
+                            setText("Push to Talk");
+                            //setImageDrawable(getResources().getDrawable(R.drawable.links));
+                            //setImageAlpha(255);
                             break;
                     }
                     mStartRecording = !mStartRecording;
-                }
-                catch (Exception error)
-                {
+                } catch (Exception error) {
                     Toast.makeText(getApplicationContext(), "Touch: " + error.getMessage(), Toast.LENGTH_LONG).show();
                 }
                 return false;
@@ -480,7 +554,10 @@ public class MainActivity extends AppCompatActivity {
 
         public PTT(Context ctx) {
             super(ctx);
-            setText("PTT");
+            setText("Push to Talk");
+            //setImageDrawable(getResources().getDrawable(R.drawable.links));
+            //setClickable(true);
+            //bringToFront();
             setOnTouchListener(touch);
         }
     }
@@ -659,6 +736,11 @@ public class MainActivity extends AppCompatActivity {
                         Error = "SoundByte not found.";
                         return null;
                     }
+                    else if (soundString.length() < 2200)
+                    {
+                        Error = "Sound not long enough.";
+                        return null;
+                    }
                     else{
                         data = data.replace("SoundByte", soundString);
                     }
@@ -679,17 +761,20 @@ public class MainActivity extends AppCompatActivity {
                 URL url = new URL(urls[0]);
                 //Toast.makeText(getApplicationContext(), url.getPort(), Toast.LENGTH_LONG).show();
 
+
                 // Send POST data request
 
                 conn = (HttpURLConnection) url.openConnection();
+                conn.setUseCaches(false);
+
                 //try {
                 //    conn.getPermission();
                 //} catch (Exception e) {
                 //    e.printStackTrace();
                 //}
                 //url.getPort();
-                conn.setConnectTimeout(4000);//define connection timeout
-                conn.setReadTimeout(4000);//define read timeout
+                conn.setConnectTimeout(30000);//define connection timeout
+                conn.setReadTimeout(30000);//define read timeout
                 //conn.connect();
                 conn.setDoOutput(true);
 
@@ -766,8 +851,11 @@ public class MainActivity extends AppCompatActivity {
                                 if (response.length > 1)
                                 {
                                     String sPhraseAsString = response[1];
-                                    String sPhraseAudioAsBase64 = response[2];
-                                    PlayBase64Mp4(sPhraseAudioAsBase64);
+                                    String sPhraseAudioAsBase64;
+                                    if (speechEnabled) {
+                                        sPhraseAudioAsBase64 = response[2];
+                                        PlayBase64Mp4(sPhraseAudioAsBase64);
+                                    }
                                     ((TextView)findViewById(R.id.StatusTextView)).setText("Response: " + sPhraseAsString);
                                 }
                                 else

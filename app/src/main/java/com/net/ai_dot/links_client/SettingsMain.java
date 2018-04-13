@@ -20,6 +20,7 @@ public class SettingsMain {
     public static final String KEY_COMMAND = "COMMAND";
     public static final String KEY_PORT = "PORT";
     public static final String KEY_MICNAME = "MICNAME";
+    public static final String KEY_ENABLESPEECH = "ENABLESPEECH";
 
     public SettingsMain(Context context) {
         this.context = context;
@@ -46,7 +47,7 @@ public class SettingsMain {
     }
 
     public String getIP(){
-        return preferences.getString(KEY_IP, "71.225.62.19");
+        return preferences.getString(KEY_IP, "192.168.11.4");
     }
 
     public void setKey(String Key){
@@ -83,6 +84,16 @@ public class SettingsMain {
     }
 
     public String getMicName() {
+
         return preferences.getString(KEY_MICNAME, "Phone 01");
+    }
+
+    public void setEnableSpeech(boolean speechEnabled) {
+        editor.putBoolean(KEY_ENABLESPEECH, speechEnabled);
+        save();
+    }
+
+    public boolean getEnableSpeech() {
+        return preferences.getBoolean(KEY_ENABLESPEECH, true);
     }
 }
